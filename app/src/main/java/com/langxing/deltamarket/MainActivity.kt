@@ -3,86 +3,206 @@ package com.langxing.deltamarket
 import android.app.Activity
 import android.os.Bundle
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
-import android.widget.Button
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 
 class MainActivity : Activity() {
+    private lateinit var webView: WebView
     private lateinit var status: TextView
+    private lateinit var tabs: LinearLayout
+    private var selectedPath = "zhanbei"
 
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    private data class MarketTab(val title: String, val path: String)
+    private val marketTabs = listOf(
+        MarketTab("装备/枪械", "zhanbei"),
+        MarketTab("子弹", "ammo"),
+        MarketTab("钥匙卡", "keys"),
+        MarketTab("收集品", "collection"),
+        MarketTab("消耗品", "consume")
+    )
+
+    private val blue = Color.rgb(31, 111, 210)
+    private val ink = Color.rgb(25, 48, 78)
+    private val pale = Color.rgb(242, 247, 253)
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
+
+    private fun rounded(color: Int, radius: Int = 10): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radius).toFloat()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(24), dp(18), dp(18))
-            setBackgroundColor(Color.rgb(245, 248, 253))
+            setBackgroundColor(pale)
+            setPadding(dp(12), dp(12), dp(12), dp(6))
         }
-        root.addView(TextView(this).apply {
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val titleBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        titleBox.addView(TextView(this).apply {
             text = "三角洲市场助手"
-            textSize = 25f
-            setTextColor(Color.rgb(24, 54, 92))
+            textSize = 21f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ink)
         })
-        root.addView(TextView(this).apply {
-            text = "中国版 · 全部可交易物品 · 手动刷新"
+        titleBox.addView(TextView(this).apply {
+            text = "免费公开行情 · 手动刷新"
+            textSize = 12f
+            setTextColor(Color.GRAY)
+            setPadding(0, dp(3), 0, 0)
+        })
+        header.addView(titleBox, LinearLayout.LayoutParams(0, -2, 1f))
+
+        val refreshButton = TextView(this).apply {
+            text = "刷新"
             textSize = 14f
-            setTextColor(Color.DKGRAY)
-            setPadding(0, dp(6), 0, dp(18))
-        })
-        root.addView(Button(this).apply {
-            text = "手动刷新行情"
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = rounded(blue, 9)
+            setPadding(dp(18), dp(10), dp(18), dp(10))
             setOnClickListener {
-                status.text = "行情 API 尚未配置。当前没有真实价格数据。"
+                if (::webView.isInitialized) {
+                    status.text = "正在刷新公开行情……"
+                    webView.reload()
+                }
             }
-        })
+        }
+        header.addView(refreshButton)
+        root.addView(header)
+
         status = TextView(this).apply {
-            text = "数据源未连接"
-            textSize = 14f
-            setTextColor(Color.rgb(160, 90, 20))
-            setPadding(0, dp(14), 0, dp(14))
+            text = "数据来源：Orzice 公开行情网页"
+            textSize = 12f
+            setTextColor(Color.rgb(65, 110, 160))
+            setPadding(dp(2), dp(10), dp(2), dp(8))
         }
         root.addView(status)
 
-        val scroll = ScrollView(this)
-        val cards = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val rows = listOf(
-            "物品列表" to "接入数据源后显示全部可交易物品",
-            "当前价格" to "--",
-            "历史价格" to "--",
-            "价格更新时间" to "--"
-        )
-        rows.forEach { (heading, value) ->
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(14), dp(12), dp(14), dp(12))
-                setBackgroundColor(Color.WHITE)
+        val tabScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+        }
+        tabs = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        marketTabs.forEach { tab ->
+            val chip = TextView(this).apply {
+                text = tab.title
+                textSize = 13f
+                gravity = Gravity.CENTER
+                setPadding(dp(14), dp(9), dp(14), dp(9))
+                setOnClickListener { openCategory(tab.path) }
             }
-            card.addView(TextView(this).apply {
-                text = heading
-                textSize = 14f
-                setTextColor(Color.GRAY)
-            })
-            card.addView(TextView(this).apply {
-                text = value
-                textSize = 17f
-                setTextColor(Color.rgb(24, 54, 92))
-                setPadding(0, dp(5), 0, 0)
-            })
-            cards.addView(card, LinearLayout.LayoutParams(-1, -2).apply {
-                bottomMargin = dp(10)
+            tabs.addView(chip, LinearLayout.LayoutParams(-2, -2).apply {
+                rightMargin = dp(7)
             })
         }
-        scroll.addView(cards)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        root.addView(TextView(this).apply {
-            text = "初始工程框架：真实行情需要接入经过验证、允许使用的第三方 API。"
-            textSize = 12f
-            setTextColor(Color.GRAY)
+        tabScroll.addView(tabs)
+        root.addView(tabScroll)
+
+        webView = WebView(this).apply {
+            setBackgroundColor(Color.WHITE)
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.databaseEnabled = true
+            settings.loadsImagesAutomatically = true
+            settings.useWideViewPort = true
+            settings.loadWithOverviewMode = true
+            settings.javaScriptCanOpenWindowsAutomatically = false
+            webChromeClient = WebChromeClient()
+            webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): Boolean {
+                    val url = request?.url ?: return false
+                    return url.scheme != "https" && url.scheme != "http"
+                }
+
+                override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                    status.text = "正在读取行情页面……"
+                }
+
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    status.text = "行情页面已加载 · 页面内可筛选和搜索"
+                }
+
+                override fun onReceivedError(
+                    view: WebView?,
+                    request: WebResourceRequest?,
+                    error: android.webkit.WebResourceError?
+                ) {
+                    if (request?.isForMainFrame == true) {
+                        status.text = "网页暂时无法连接，请检查网络后点刷新"
+                    }
+                }
+            }
+        }
+        root.addView(webView, LinearLayout.LayoutParams(-1, 0, 1f).apply {
+            topMargin = dp(9)
         })
+
+        root.addView(TextView(this).apply {
+            text = "行情由第三方公开网站提供；价格以游戏内交易行为准。"
+            textSize = 10f
+            setTextColor(Color.GRAY)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(6), 0, 0)
+        })
+
         setContentView(root)
+        openCategory(selectedPath)
+    }
+
+    private fun openCategory(path: String) {
+        selectedPath = path
+        for (i in 0 until tabs.childCount) {
+            val view = tabs.getChildAt(i) as TextView
+            val tab = marketTabs[i]
+            val active = tab.path == path
+            view.setTextColor(if (active) Color.WHITE else ink)
+            view.background = rounded(if (active) blue else Color.WHITE, 9)
+        }
+        val title = marketTabs.firstOrNull { it.path == path }?.title ?: "行情"
+        status.text = "正在读取" + title + "……"
+        webView.loadUrl("https://orzice.com/v/" + path)
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        if (::webView.isInitialized && webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    override fun onDestroy() {
+        if (::webView.isInitialized) {
+            webView.stopLoading()
+            webView.destroy()
+        }
+        super.onDestroy()
     }
 }
