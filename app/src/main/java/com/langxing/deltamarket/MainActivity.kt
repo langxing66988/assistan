@@ -18,19 +18,19 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var status: TextView
     private lateinit var tabs: LinearLayout
-    private var selectedPath = "items/"
+    private var selectedPath = "v/market_board"
 
     private data class MarketTab(val title: String, val path: String)
     private val marketTabs = listOf(
-        MarketTab("全部物品", "items/"),
-        MarketTab("枪械", "weapon/"),
-        MarketTab("子弹", "ammo/"),
-        MarketTab("钥匙", "items/propskey/"),
-        MarketTab("收集品", "items/propscollection/"),
-        MarketTab("涨幅榜", "market/rising/")
+        MarketTab("全部行情", "v/market_board"),
+        MarketTab("装备配件", "v/zhanbei"),
+        MarketTab("子弹", "v/ammo"),
+        MarketTab("钥匙卡", "v/keys"),
+        MarketTab("收集品", "v/collection"),
+        MarketTab("消耗品", "v/consume")
     )
 
-    private val baseUrl = "https://sjz.u79.cn/"
+    private val baseUrl = "https://orzice.com/"
     private val blue = Color.rgb(31, 111, 210)
     private val ink = Color.rgb(25, 48, 78)
     private val pale = Color.rgb(242, 247, 253)
@@ -67,7 +67,7 @@ class MainActivity : Activity() {
             setTextColor(ink)
         })
         titleBox.addView(TextView(this).apply {
-            text = "公开行情 · 手动刷新 · 支持横屏价格走势"
+            text = "公开行情 · 手动刷新 · 横屏查看价格走势"
             textSize = 12f
             setTextColor(Color.GRAY)
             setPadding(0, dp(3), 0, 0)
@@ -115,7 +115,7 @@ class MainActivity : Activity() {
         root.addView(header)
 
         status = TextView(this).apply {
-            text = "数据来源：三角洲行动数据库（第三方公开页面）"
+            text = "数据来源：Orzice 第三方公开交易行页面"
             textSize = 12f
             setTextColor(Color.rgb(65, 110, 160))
             setPadding(dp(2), dp(10), dp(2), dp(8))
@@ -206,7 +206,7 @@ class MainActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "第三方非官方数据，仅供参考；报价可能延迟或缺失，交易以游戏内实际成交为准。"
+            text = "第三方非官方行情，仅供参考；价格和走势可能延迟或缺失，以游戏内实际成交为准。"
             textSize = 10f
             setTextColor(Color.GRAY)
             gravity = Gravity.CENTER
