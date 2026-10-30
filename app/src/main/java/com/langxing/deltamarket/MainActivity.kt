@@ -1,6 +1,8 @@
 package com.langxing.deltamarket
 
 import android.app.Activity
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
@@ -65,7 +67,7 @@ class MainActivity : Activity() {
             setTextColor(ink)
         })
         titleBox.addView(TextView(this).apply {
-            text = "免费公开行情页面 · 手动刷新"
+            text = "公开行情 · 手动刷新 · 支持横屏价格走势"
             textSize = 12f
             setTextColor(Color.GRAY)
             setPadding(0, dp(3), 0, 0)
@@ -88,6 +90,28 @@ class MainActivity : Activity() {
             }
         }
         header.addView(refreshButton)
+
+        val orientationButton = TextView(this).apply {
+            text = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) "竖屏" else "横屏"
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(blue)
+            background = rounded(Color.WHITE, 9)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            setOnClickListener {
+                requestedOrientation = if (
+                    resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                ) {
+                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                } else {
+                    ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                }
+            }
+        }
+        header.addView(orientationButton, LinearLayout.LayoutParams(-2, -2).apply {
+            leftMargin = dp(8)
+        })
         root.addView(header)
 
         status = TextView(this).apply {
