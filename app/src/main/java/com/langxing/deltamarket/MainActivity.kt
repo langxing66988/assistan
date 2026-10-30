@@ -155,7 +155,7 @@ class MainActivity : Activity() {
                     error: WebResourceError?
                 ) {
                     if (request?.isForMainFrame == true) {
-                        status.text = "连接失败：\u0024{error?.description ?: \"网络错误\"}。可切换网络后重试。"
+                        status.text = "连接失败：" + (error?.description ?: "网络错误") + "。可切换网络后重试。"
                     }
                 }
 
@@ -165,7 +165,7 @@ class MainActivity : Activity() {
                     errorResponse: WebResourceResponse?
                 ) {
                     if (request?.isForMainFrame == true) {
-                        status.text = "站点返回 HTTP \u0024{errorResponse?.statusCode ?: \"错误\"}，请稍后重试。"
+                        status.text = "站点返回 HTTP " + (errorResponse?.statusCode ?: "错误") + "，请稍后重试。"
                     }
                 }
 
