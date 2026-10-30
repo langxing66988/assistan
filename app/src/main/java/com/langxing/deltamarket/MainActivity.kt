@@ -1,8 +1,10 @@
 package com.langxing.deltamarket
 
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
@@ -19,6 +21,7 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var tabs: LinearLayout
     private var selectedPath = "v/market_board"
+    private var mainFrameHttpError: Int? = null
 
     private data class MarketTab(val title: String, val path: String)
     private val marketTabs = listOf(
@@ -43,6 +46,15 @@ class MainActivity : Activity() {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
         }
+
+    private fun openCurrentPageInBrowser() {
+        val url = baseUrl + selectedPath
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (_: Exception) {
+            status.text = "未找到可打开网页的浏览器，请先安装或启用浏览器。"
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,7 +93,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             background = rounded(blue, 9)
-            setPadding(dp(18), dp(10), dp(18), dp(10))
+            setPadding(dp(14), dp(10), dp(14), dp(10))
             setOnClickListener {
                 if (::webView.isInitialized) {
                     status.text = "正在刷新当前分类……"
@@ -91,6 +103,20 @@ class MainActivity : Activity() {
         }
         header.addView(refreshButton)
 
+        val browserButton = TextView(this).apply {
+            text = "浏览器"
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(ink)
+            background = rounded(Color.WHITE, 9)
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            setOnClickListener { openCurrentPageInBrowser() }
+        }
+        header.addView(browserButton, LinearLayout.LayoutParams(-2, -2).apply {
+            leftMargin = dp(6)
+        })
+
         val orientationButton = TextView(this).apply {
             text = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) "竖屏" else "横屏"
             textSize = 14f
@@ -98,7 +124,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setTextColor(blue)
             background = rounded(Color.WHITE, 9)
-            setPadding(dp(14), dp(10), dp(14), dp(10))
+            setPadding(dp(12), dp(10), dp(12), dp(10))
             setOnClickListener {
                 requestedOrientation = if (
                     resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -110,7 +136,7 @@ class MainActivity : Activity() {
             }
         }
         header.addView(orientationButton, LinearLayout.LayoutParams(-2, -2).apply {
-            leftMargin = dp(8)
+            leftMargin = dp(6)
         })
         root.addView(header)
 
@@ -166,11 +192,29 @@ class MainActivity : Activity() {
                 override fun onPageStarted(
                     view: WebView?, url: String?, favicon: android.graphics.Bitmap?
                 ) {
+                    mainFrameHttpError = null
                     status.text = "正在连接公开行情页面……"
                 }
 
                 override fun onPageFinished(view: WebView?, url: String?) {
-                    status.text = "页面响应完成 · 报价时间以列表实际显示为准"
+                    val httpError = mainFrameHttpError
+                    if (httpError != null) {
+                        status.text = "站点返回 HTTP $httpError。可点“浏览器”尝试由系统浏览器打开；此操作不会绕过站点安全限制。"
+                        return
+                    }
+                    view?.evaluateJavascript(
+                        "(function(){return document.body ? document.body.innerText : '';})()"
+                    ) { bodyText ->
+                        val blocked = listOf(
+                            "安全策略", "访问被拒绝", "请求被拦截",
+                            "403 Forbidden", "Access Denied", "Request blocked"
+                        ).any { bodyText?.contains(it, ignoreCase = true) == true }
+                        status.text = if (blocked) {
+                            "检测到站点安全拦截（不是 APK 构建失败）。可点“浏览器”在系统浏览器中打开；不会尝试绕过站点限制。"
+                        } else {
+                            "页面响应完成 · 报价时间以列表实际显示为准"
+                        }
+                    }
                 }
 
                 override fun onReceivedError(
@@ -179,7 +223,7 @@ class MainActivity : Activity() {
                     error: WebResourceError?
                 ) {
                     if (request?.isForMainFrame == true) {
-                        status.text = "连接失败：" + (error?.description ?: "网络错误") + "。可切换网络后重试。"
+                        status.text = "连接失败：" + (error?.description ?: "网络错误") + "。可切换网络后重试，或点“浏览器”打开。"
                     }
                 }
 
@@ -189,7 +233,8 @@ class MainActivity : Activity() {
                     errorResponse: WebResourceResponse?
                 ) {
                     if (request?.isForMainFrame == true) {
-                        status.text = "站点返回 HTTP " + (errorResponse?.statusCode ?: "错误") + "，请稍后重试。"
+                        mainFrameHttpError = errorResponse?.statusCode ?: 0
+                        status.text = "站点返回 HTTP " + (errorResponse?.statusCode ?: "错误") + "。"
                     }
                 }
 
@@ -197,7 +242,7 @@ class MainActivity : Activity() {
                     view: WebView?, handler: SslErrorHandler?, error: SslError?
                 ) {
                     handler?.cancel()
-                    status.text = "HTTPS 证书校验失败，已停止连接。"
+                    status.text = "HTTPS 证书校验失败，已停止连接。请检查系统时间或网络证书。"
                 }
             }
         }
